@@ -10,6 +10,7 @@ export default async function handler(req, res) {
 
     let articles = [];
 
+    // 🔹 RSS (garantido)
     for (const url of sources) {
       try {
         const r = await fetch(url);
@@ -17,7 +18,7 @@ export default async function handler(req, res) {
 
         const items = [...text.matchAll(/<item>([\s\S]*?)<\/item>/g)];
 
-        items.slice(0, 5).forEach(i => {
+        items.slice(0, 4).forEach(i => {
           const block = i[1];
 
           const title = block.match(/<title>(.*?)<\/title>/)?.[1] || "";
@@ -25,59 +26,54 @@ export default async function handler(req, res) {
           const desc = block.match(/<description>(.*?)<\/description>/)?.[1] || "";
 
           articles.push({
-            title: title.replace(/<!\[CDATA\[|\]\]>/g, ""),
-            summary: desc.replace(/<[^>]+>/g, "").slice(0, 200),
-            url: link
+            headline: title.replace(/<!\[CDATA\[|\]\]>/g, ""),
+            summary: desc.replace(/<[^>]+>/g, "").slice(0, 140),
+            url: link,
+            source: "News",
+            tag: "markets"
           });
         });
 
       } catch {}
     }
 
-    const sample = articles.slice(0, 15);
+    // 🔥 FALLBACK (SEM IA — nunca falha)
+    if (articles.length === 0) {
+      return res.status(200).json({
+        raw: JSON.stringify({
+          hero: {
+            headline: "Mercados globais em destaque",
+            summary: "Não foi possível carregar fontes externas, mas o sistema está ativo.",
+            tags: ["markets"]
+          },
+          cards: []
+        })
+      });
+    }
 
-    // 🔥 FORÇAR JSON LIMPO (IMPORTANTE)
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
+    // 🔥 HERO simples (sem IA para estabilidade)
+    const result = {
+      hero: {
+        headline: articles[0].headline,
+        summary: articles[0].summary,
+        tags: ["markets"]
       },
-      body: JSON.stringify({
-        model: "gpt-4.1-mini",
-        response_format: { type: "json_object" },
-        input: `Organiza estas notícias:
-
-${JSON.stringify(sample)}
-
-Formato:
-{
- "hero": {
-   "headline": "",
-   "summary": "",
-   "tags": ["financial","geo","markets","politics","tech"]
- },
- "cards": [
-   {
-     "headline": "",
-     "summary": "",
-     "source": "",
-     "url": "",
-     "tag": ""
-   }
- ]
-}`
-      })
-    });
-
-    const data = await aiResponse.json();
-
-    const text = data.output?.[0]?.content?.[0]?.text || "{}";
+      cards: articles.slice(1, 10)
+    };
 
     res.setHeader("Cache-Control", "s-maxage=300");
-    res.status(200).json({ raw: text });
+    res.status(200).json({ raw: JSON.stringify(result) });
 
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      raw: JSON.stringify({
+        hero: {
+          headline: "Erro ao carregar briefing",
+          summary: err.message,
+          tags: ["markets"]
+        },
+        cards: []
+      })
+    });
   }
 }

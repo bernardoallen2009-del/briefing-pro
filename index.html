@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Briefing Pro</title>
+
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont;
+  margin:0;
+  background:#0f0f10;
+  color:#fff;
+}
+header {
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #222;
+}
+button {
+  background:#222;
+  color:#fff;
+  border:none;
+  padding:8px 14px;
+  border-radius:20px;
+  cursor:pointer;
+}
+.hero {
+  padding:30px 20px;
+}
+.cards {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:12px;
+  padding:20px;
+}
+.card {
+  background:#18181a;
+  padding:16px;
+  border-radius:12px;
+}
+a { color:#aaa; font-size:12px; }
+</style>
+</head>
+
+<body>
+
+<header>
+  <h3>Briefing</h3>
+  <button onclick="load()">Atualizar</button>
+</header>
+
+<div class="hero" id="hero">A carregar...</div>
+<div class="cards" id="cards"></div>
+
+<script>
+function extractJSON(text) {
+  try { return JSON.parse(text); } catch {}
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) return JSON.parse(match[0]);
+  return null;
+}
+
+async function load() {
+  document.getElementById("hero").innerHTML = "A carregar…";
+  document.getElementById("cards").innerHTML = "";
+
+  try {
+    const res = await fetch("/api/briefing");
+    const data = await res.json();
+
+    const parsed = extractJSON(data.raw);
+
+    if (!parsed) throw new Error("Erro parsing");
+
+    document.getElementById("hero").innerHTML = `
+      <h1>${parsed.hero.headline}</h1>
+      <p>${parsed.hero.summary}</p>
+    `;
+
+    document.getElementById("cards").innerHTML =
+      parsed.cards.map(c => `
+        <div class="card">
+          <h3>${c.headline}</h3>
+          <p>${c.summary}</p>
+          <a href="${c.url}" target="_blank">Ler →</a>
+        </div>
+      `).join("");
+
+  } catch (e) {
+    document.getElementById("hero").innerHTML =
+      "Erro a carregar briefing";
+  }
+}
+
+load();
+</script>
+
+</body>
+</html>

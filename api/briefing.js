@@ -1,20 +1,16 @@
 export default async function handler(req, res) {
   try {
     const sources = [
-      // 🔥 PRINCIPAIS (FIÁVEIS)
-      "https://feeds.a.dj.com/rss/RSSMarketsMain.xml", // WSJ
-      "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", // NYT
+      "https://feeds.a.dj.com/rss/RSSMarketsMain.xml",
+      "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml",
       "https://www.economist.com/finance-and-economics/rss.xml",
       "https://feeds.feedburner.com/zerohedge/feed",
-      "https://ark-invest.com/feed/",
-
-      // 🔥 EXTRA (mercados)
-      "https://feeds.a.dj.com/rss/RSSWorldNews.xml"
+      "https://ark-invest.com/feed/"
     ];
 
     let articles = [];
 
-    // 🧠 1. RSS (base sólida)
+    // 🔥 RSS
     for (const url of sources) {
       try {
         const r = await fetch(url);
@@ -39,59 +35,25 @@ export default async function handler(req, res) {
       } catch {}
     }
 
-    // 🧠 2. IA PARA COMPLETAR (fontes difíceis)
-    const aiExtra = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01"
-      },
-      body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 1200,
-        messages: [{
-          role: "user",
-          content: `Dá-me 5 notícias recentes destas fontes:
-- Morgan Stanley YouTube
-- Guggenheim Investments
-- BNP Paribas AM
-- DWS
-- IA (Yann LeCun, etc)
-
-Formato:
-[
- { "title":"", "summary":"", "url":"" }
-]`
-        }]
-      })
-    });
-
-    const aiData = await aiExtra.json();
-    const aiText = aiData.content?.[0]?.text || "";
-
-    try {
-      const extra = JSON.parse(aiText);
-      articles = articles.concat(extra);
-    } catch {}
-
-    // 🔥 LIMITAR E LIMPAR
     const sample = articles.slice(0, 20);
 
-    // 🧠 3. IA FINAL (organização estilo Bloomberg)
-    const finalAI = await fetch("https://api.anthropic.com/v1/messages", {
+    // 🧠 OPENAI
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-api-key": process.env.ANTHROPIC_API_KEY,
-        "anthropic-version": "2023-06-01"
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-6",
-        max_tokens: 2000,
-        messages: [{
-          role: "user",
-          content: `Organiza estas notícias:
+        model: "gpt-4.1-mini",
+        messages: [
+          {
+            role: "system",
+            content: "És um analista financeiro de elite."
+          },
+          {
+            role: "user",
+            content: `Organiza estas notícias:
 
 ${JSON.stringify(sample)}
 
@@ -104,12 +66,14 @@ Formato:
 }
 
 Ordena por impacto global.`
-        }]
+          }
+        ],
+        temperature: 0.7
       })
     });
 
-    const finalData = await finalAI.json();
-    const text = finalData.content?.[0]?.text || "";
+    const data = await aiResponse.json();
+    const text = data.choices?.[0]?.message?.content || "";
 
     res.setHeader("Cache-Control", "s-maxage=300");
     res.status(200).json({ raw: text });

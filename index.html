@@ -1,101 +1,459 @@
 <!DOCTYPE html>
 <html lang="pt">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Briefing Pro</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Briefing Diário</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont;
-  margin:0;
-  background:#0f0f10;
-  color:#fff;
-}
-header {
-  padding:20px;
-  display:flex;
-  justify-content:space-between;
-  border-bottom:1px solid #222;
-}
-button {
-  background:#222;
-  color:#fff;
-  border:none;
-  padding:8px 14px;
-  border-radius:20px;
-  cursor:pointer;
-}
-.hero {
-  padding:30px 20px;
-}
-.cards {
-  display:grid;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-  gap:12px;
-  padding:20px;
-}
-.card {
-  background:#18181a;
-  padding:16px;
-  border-radius:12px;
-}
-a { color:#aaa; font-size:12px; }
-</style>
+    :root {
+      --bg: #f7f6f2;
+      --bg-card: #ffffff;
+      --bg-nav: rgba(247,246,242,0.94);
+      --ink: #1a1916;
+      --ink-2: #5c5a54;
+      --ink-3: #a09e97;
+      --border: rgba(0,0,0,0.07);
+      --border-md: rgba(0,0,0,0.13);
+      --accent: #c8a96e;
+      --r: 10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #141412;
+        --bg-card: #1e1d1a;
+        --bg-nav: rgba(20,20,18,0.94);
+        --ink: #f0ede6;
+        --ink-2: #9e9b93;
+        --ink-3: #5c5a54;
+        --border: rgba(255,255,255,0.06);
+        --border-md: rgba(255,255,255,0.12);
+      }
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #progress {
+      position: fixed; top: 0; left: 0;
+      height: 2px; width: 0%;
+      background: var(--accent);
+      transition: width 0.5s ease;
+      z-index: 9999;
+    }
+
+    .nav {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1rem 2rem;
+      border-bottom: 0.5px solid var(--border);
+      background: var(--bg-nav);
+      position: sticky; top: 0; z-index: 100;
+      backdrop-filter: blur(16px);
+    }
+    .nav-logo {
+      font-family: 'Playfair Display', serif;
+      font-size: 18px; letter-spacing: -0.3px; color: var(--ink);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-logo::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent); display: inline-block;
+    }
+    .nav-date { font-size: 11px; font-weight: 400; color: var(--ink-3); letter-spacing: 0.6px; text-transform: uppercase; }
+    .nav-refresh {
+      background: none; border: 0.5px solid var(--border-md);
+      border-radius: 20px; padding: 5px 14px;
+      font-size: 11px; font-family: 'DM Sans', sans-serif;
+      color: var(--ink-2); cursor: pointer; transition: all 0.2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .nav-refresh:hover { background: var(--bg-card); color: var(--ink); border-color: var(--accent); }
+    .nav-refresh:disabled { opacity: 0.5; cursor: not-allowed; }
+    .spin-icon { display: inline-block; }
+    .spinning .spin-icon { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .tab-bar {
+      display: flex; padding: 0 2rem;
+      background: var(--bg-card);
+      border-bottom: 0.5px solid var(--border);
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .tab-bar::-webkit-scrollbar { display: none; }
+    .tab {
+      font-size: 11.5px; color: var(--ink-3);
+      padding: 10px 14px; border: none; background: none; cursor: pointer;
+      border-bottom: 1.5px solid transparent;
+      font-family: 'DM Sans', sans-serif; white-space: nowrap; transition: all 0.15s;
+    }
+    .tab.active { color: var(--ink); border-bottom-color: var(--accent); }
+    .tab:hover:not(.active) { color: var(--ink-2); }
+
+    .hero {
+      background: var(--bg-card);
+      padding: 3rem 2rem 2.5rem;
+      border-bottom: 0.5px solid var(--border);
+      position: relative; overflow: hidden; min-height: 180px;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: 0; right: 0;
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(200,169,110,0.07) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--accent); margin-bottom: 1rem; }
+    .hero-title { font-family: 'Playfair Display', serif; font-size: clamp(22px, 3.5vw, 36px); line-height: 1.22; color: var(--ink); max-width: 780px; margin-bottom: 1.1rem; }
+    .hero-body { font-size: 15px; font-weight: 300; line-height: 1.72; color: var(--ink-2); max-width: 680px; }
+    .hero-pills { display: flex; gap: 8px; margin-top: 1.5rem; flex-wrap: wrap; }
+
+    .pill, .ctag {
+      font-size: 9.5px; font-weight: 500; letter-spacing: 0.8px;
+      text-transform: uppercase; padding: 3px 9px; border-radius: 10px;
+    }
+    .pill { padding: 4px 10px; border-radius: 20px; }
+
+    .pill.financial,.ctag.financial{background:#E3EEF9;color:#1a5fa0}
+    .pill.geo,.ctag.geo{background:#FDF0DF;color:#8B5B0A}
+    .pill.markets,.ctag.markets{background:#E7F4E1;color:#2d6b11}
+    .pill.politics,.ctag.politics{background:#FAE8EF;color:#9c3157}
+    .pill.tech,.ctag.tech{background:#EDEAFD;color:#5540c4}
+
+    @media (prefers-color-scheme: dark) {
+      .pill.financial,.ctag.financial{background:rgba(26,95,160,.2);color:#7db8f0}
+      .pill.geo,.ctag.geo{background:rgba(139,91,10,.2);color:#e4a64e}
+      .pill.markets,.ctag.markets{background:rgba(45,107,17,.2);color:#7fd45f}
+      .pill.politics,.ctag.politics{background:rgba(156,49,87,.2);color:#f07aa4}
+      .pill.tech,.ctag.tech{background:rgba(85,64,196,.2);color:#b3a8f8}
+    }
+
+    .loading-state { text-align: center; padding: 3rem 2rem; color: var(--ink-3); }
+    .dots { display: inline-flex; gap: 4px; }
+    .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-3); animation: blink 1.4s ease-in-out infinite; }
+    .dot:nth-child(2){animation-delay:.2s}
+    .dot:nth-child(3){animation-delay:.4s}
+    @keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}
+    .loading-msg { margin-top: 12px; font-size: 13px; color: var(--ink-3); font-weight: 300; }
+
+    .status-bar {
+      padding: 0.55rem 2rem; font-size: 11px; color: var(--ink-3);
+      border-bottom: 0.5px solid var(--border);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .status-dot { width: 5px; height: 5px; border-radius: 50%; background: #4caf50; flex-shrink: 0; }
+
+    .section { padding: 2rem; max-width: 1180px; margin: 0 auto; }
+    .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 1.3rem; }
+    .section-label { font-size: 10px; font-weight: 500; letter-spacing: 2px; text-transform: uppercase; color: var(--ink-3); white-space: nowrap; }
+    .section-rule { flex: 1; height: 0.5px; background: var(--border); }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+      gap: 1px; background: var(--border);
+      border: 0.5px solid var(--border);
+      border-radius: var(--r); overflow: hidden;
+    }
+    .card {
+      background: var(--bg-card);
+      padding: 1.3rem 1.5rem;
+      display: flex; flex-direction: column; gap: 9px;
+      transition: background 0.15s;
+    }
+    .card:hover { background: var(--bg); }
+    .card-source { font-size: 9.5px; font-weight: 500; letter-spacing: 1.2px; text-transform: uppercase; color: var(--ink-3); }
+    .card-headline { font-family: 'Playfair Display', serif; font-size: 15px; line-height: 1.35; color: var(--ink); }
+    .card-summary { font-size: 13px; font-weight: 300; line-height: 1.62; color: var(--ink-2); flex: 1; }
+    .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 2px; }
+    .card-link { font-size: 11px; color: var(--ink-3); text-decoration: none; transition: color 0.15s; }
+    .card-link:hover { color: var(--accent); }
+
+    .error-state {
+      background: var(--bg-card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--r); padding: 2.5rem;
+      text-align: center; color: var(--ink-2);
+      font-size: 14px; font-weight: 300; line-height: 1.8;
+    }
+    .retry-btn {
+      margin-top: 14px; padding: 6px 18px;
+      border: 0.5px solid var(--border-md); border-radius: 20px;
+      background: none; font-family: 'DM Sans', sans-serif;
+      font-size: 12px; color: var(--ink-2); cursor: pointer;
+    }
+    .retry-btn:hover { border-color: var(--accent); color: var(--ink); }
+
+    footer {
+      padding: 2rem; text-align: center;
+      font-size: 10.5px; color: var(--ink-3);
+      border-top: 0.5px solid var(--border);
+      margin-top: 1rem; letter-spacing: 0.5px; line-height: 1.8;
+    }
+  </style>
 </head>
-
 <body>
 
-<header>
-  <h3>Briefing</h3>
-  <button onclick="load()">Atualizar</button>
-</header>
+<div id="progress"></div>
 
-<div class="hero" id="hero">A carregar...</div>
-<div class="cards" id="cards"></div>
+<nav class="nav">
+  <span class="nav-logo">Briefing</span>
+  <span class="nav-date" id="nav-date"></span>
+  <button class="nav-refresh" id="refresh-btn" onclick="loadBriefing()">
+    <span class="spin-icon">↻</span> Atualizar
+  </button>
+</nav>
+
+<div class="tab-bar">
+  <button class="tab active" onclick="filterCards('all',this)">Tudo</button>
+  <button class="tab" onclick="filterCards('financial',this)">Finanças</button>
+  <button class="tab" onclick="filterCards('markets',this)">Mercados</button>
+  <button class="tab" onclick="filterCards('geo',this)">Geopolítica</button>
+  <button class="tab" onclick="filterCards('politics',this)">Política</button>
+  <button class="tab" onclick="filterCards('tech',this)">Tecnologia</button>
+</div>
+
+<div class="hero" id="hero">
+  <div class="loading-state">
+    <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    <div class="loading-msg" id="loading-msg">A iniciar briefing…</div>
+  </div>
+</div>
+
+<div id="status-bar"></div>
+
+<div class="section">
+  <div class="section-header">
+    <span class="section-label">Destaques do dia</span>
+    <div class="section-rule"></div>
+  </div>
+  <div id="cards">
+    <div class="loading-state">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Briefing Diário · ZeroHedge · The Economist · ARK Invest · DWS · Guggenheim · BofA · MTKnews · Yann LeCun · BNP Paribas AM<br>
+  Gerado com IA · Pesquisa em tempo real · Atualiza a cada carregamento
+</footer>
 
 <script>
-function extractJSON(text) {
-  try { return JSON.parse(text); } catch {}
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) return JSON.parse(match[0]);
+const today = new Date();
+const todayISO = today.toISOString().split('T')[0];
+const dateStr = today.toLocaleDateString('pt-PT', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+document.getElementById('nav-date').textContent = dateStr.toUpperCase();
+
+let allCards = [];
+const tagLabels = { financial:'Finanças', geo:'Geopolítica', markets:'Mercados', politics:'Política', tech:'Tecnologia' };
+const tl = t => tagLabels[t] || t;
+
+function setProgress(pct) {
+  document.getElementById('progress').style.width = pct + '%';
+}
+
+function setMsg(msg) {
+  const el = document.getElementById('loading-msg');
+  if (el) el.textContent = msg;
+}
+
+function extractJSON(raw) {
+  const clean = raw.replace(/```json|```/g, '').trim();
+  try { return JSON.parse(clean); } catch {}
+  const arr = clean.match(/\[[\s\S]*?\]/s);
+  if (arr) { try { return JSON.parse(arr[0]); } catch {} }
+  // Try to extract the outermost {...}
+  let depth = 0, start = -1;
+  for (let i = 0; i < clean.length; i++) {
+    if (clean[i] === '{') { if (start === -1) start = i; depth++; }
+    else if (clean[i] === '}') { depth--; if (depth === 0 && start !== -1) { try { return JSON.parse(clean.slice(start, i+1)); } catch { start = -1; } } }
+  }
   return null;
 }
 
-async function load() {
-  document.getElementById("hero").innerHTML = "A carregar…";
-  document.getElementById("cards").innerHTML = "";
+async function loadBriefing() {
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true;
+  btn.classList.add('spinning');
+
+  document.getElementById('hero').innerHTML = `
+    <div class="loading-state">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="loading-msg" id="loading-msg">A pesquisar notícias de hoje…</div>
+    </div>`;
+  document.getElementById('cards').innerHTML = `
+    <div class="loading-state">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>`;
+  document.getElementById('status-bar').innerHTML = '';
+  setProgress(10);
+
+  let prog = 10;
+  const progTick = setInterval(() => { prog = Math.min(prog + 1.5, 80); setProgress(prog); }, 1000);
+
+  const msgs = [
+    'A pesquisar ZeroHedge e mercados…',
+    'A verificar The Economist e geopolítica…',
+    'A analisar ARK Invest e tecnologia…',
+    'A compilar DWS, Guggenheim, BofA…',
+    'A preparar o resumo final…'
+  ];
+  let mi = 0;
+  const msgTick = setInterval(() => { if (mi < msgs.length) setMsg(msgs[mi++]); }, 4000);
+
+  const system = `Hoje é ${todayISO}. És um agregador de notícias financeiras e geopolíticas de elite.
+Usa web search para encontrar as notícias MAIS RECENTES E IMPORTANTES de hoje.
+Responde APENAS com JSON válido. Sem markdown, sem texto extra. Formato obrigatório:
+{
+  "hero": {
+    "headline": "título impactante em português europeu, máx 12 palavras",
+    "summary": "2-3 frases em português europeu, resumo executivo do tema mais importante de hoje",
+    "tags": ["financial","geo","markets","politics","tech"]
+  },
+  "cards": [
+    {
+      "headline": "título da notícia máx 12 palavras",
+      "summary": "1 frase em português europeu, máx 30 palavras",
+      "source": "Nome da Fonte",
+      "url": "https://url-real-encontrado-na-pesquisa",
+      "tag": "financial|geo|markets|politics|tech"
+    }
+  ]
+}`;
+
+  const prompt = `Pesquisa e compila as 12 notícias mais importantes de HOJE (${todayISO}).
+
+Fontes e temas OBRIGATÓRIOS:
+1. ZeroHedge — mercados, finanças, macro
+2. The Economist — economia global, política internacional
+3. ARK Invest (ark-invest.com) — inovação, tecnologia, disrupção
+4. DWS (dws.com) — perspetivas de investimento, alocação de ativos
+5. Guggenheim Investments — estratégia de mercado, crédito
+6. Bank of America Global Research (business.bofa.com) — insights de mercado
+7. MTKnews.com — notícias gerais de mercado
+8. IA e tecnologia (Yann LeCun, OpenAI, DeepMind, etc.)
+9. BNP Paribas Asset Management — gestão de portfólio
+10. Aprovação de Trump / política americana (The Economist ou Politico)
+11. Geopolítica: conflitos, NATO, China, Rússia, Médio Oriente
+12. Qualquer outra notícia crítica de hoje (mercados, cripto, energia)
+
+IMPORTANTE: Para cada card, usa o URL REAL da notícia encontrada na pesquisa web.
+Responde APENAS com o JSON no formato especificado. Sem mais texto.`;
 
   try {
-    const res = await fetch("/api/briefing");
-    const data = await res.json();
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 3000,
+        system,
+        messages: [{ role: 'user', content: prompt }],
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }]
+      })
+    });
 
-    const parsed = extractJSON(data.raw);
+    clearInterval(progTick);
+    clearInterval(msgTick);
 
-    if (!parsed) throw new Error("Erro parsing");
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(`Erro ${resp.status}: ${errData.error?.message || resp.statusText}`);
+    }
 
-    document.getElementById("hero").innerHTML = `
-      <h1>${parsed.hero.headline}</h1>
-      <p>${parsed.hero.summary}</p>
-    `;
+    const data = await resp.json();
+    const raw = data.raw || "";.filter(b => b.type === 'text').map(b => b.text).join('');
+    const parsed = extractJSON(raw);
 
-    document.getElementById("cards").innerHTML =
-      parsed.cards.map(c => `
-        <div class="card">
-          <h3>${c.headline}</h3>
-          <p>${c.summary}</p>
-          <a href="${c.url}" target="_blank">Ler →</a>
-        </div>
-      `).join("");
+    if (!parsed) throw new Error('Resposta da IA não foi JSON válido. Tente novamente.');
 
-  } catch (e) {
-    document.getElementById("hero").innerHTML =
-      "Erro a carregar briefing";
+    const hero = parsed.hero || {};
+    const cards = Array.isArray(parsed.cards) ? parsed.cards.slice(0, 12) : [];
+
+    setProgress(95);
+    renderHero(hero);
+    allCards = cards;
+    renderCards(cards);
+
+    const now = new Date().toLocaleTimeString('pt-PT', { hour:'2-digit', minute:'2-digit' });
+    document.getElementById('status-bar').innerHTML = `
+      <div class="status-bar">
+        <div class="status-dot"></div>
+        Atualizado às ${now} · ${cards.length} notícias · Pesquisa em tempo real
+      </div>`;
+
+    setProgress(100);
+    setTimeout(() => setProgress(0), 800);
+
+  } catch (err) {
+    clearInterval(progTick);
+    clearInterval(msgTick);
+    console.error(err);
+
+    document.getElementById('hero').innerHTML = `
+      <div class="error-state">
+        Não foi possível carregar o briefing.<br>
+        <small style="font-size:12px;color:var(--ink-3);margin-top:6px;display:block">${err.message}</small>
+        <button class="retry-btn" onclick="loadBriefing()">↻ Tentar novamente</button>
+      </div>`;
+    document.getElementById('cards').innerHTML = '';
+    setProgress(0);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('spinning');
   }
 }
 
-load();
-</script>
+function renderHero(data) {
+  const tags = (data.tags || ['financial']).slice(0,4)
+    .map(t => `<span class="pill ${t}">${tl(t)}</span>`).join('');
+  document.getElementById('hero').innerHTML = `
+    <div class="hero-eyebrow">Briefing · ${dateStr}</div>
+    <h1 class="hero-title">${data.headline || 'Resumo do Dia'}</h1>
+    <p class="hero-body">${data.summary || ''}</p>
+    <div class="hero-pills">${tags}</div>
+  `;
+}
 
+function renderCards(cards) {
+  const el = document.getElementById('cards');
+  if (!cards || !cards.length) {
+    el.innerHTML = `<div class="error-state">Sem notícias disponíveis de momento.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="cards-grid">${cards.map(c => {
+    const url = c.url && c.url.startsWith('http') ? c.url : null;
+    return `
+    <div class="card" data-tag="${c.tag||'financial'}">
+      <div class="card-source">${c.source || 'Fonte'}</div>
+      <div class="card-headline">${c.headline || ''}</div>
+      <div class="card-summary">${c.summary || ''}</div>
+      <div class="card-footer">
+        <span class="ctag ${c.tag||'financial'}">${tl(c.tag)}</span>
+        ${url
+          ? `<a class="card-link" href="${url}" target="_blank" rel="noopener noreferrer">Ler notícia →</a>`
+          : `<span class="card-link" style="opacity:.35">Sem link</span>`}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function filterCards(filter, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const filtered = filter === 'all' ? allCards : allCards.filter(c => c.tag === filter);
+  renderCards(filtered.length ? filtered : allCards);
+}
+
+loadBriefing();
+</script>
 </body>
 </html>

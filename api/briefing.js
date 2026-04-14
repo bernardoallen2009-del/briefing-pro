@@ -10,7 +10,6 @@ export default async function handler(req, res) {
 
     let articles = [];
 
-    // 🔥 RSS
     for (const url of sources) {
       try {
         const r = await fetch(url);
@@ -35,10 +34,10 @@ export default async function handler(req, res) {
       } catch {}
     }
 
-    const sample = articles.slice(0, 20);
+    const sample = articles.slice(0, 15);
 
-    // 🧠 OPENAI
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    // 🔥 FORÇAR JSON LIMPO (IMPORTANTE)
+    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -46,34 +45,34 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "gpt-4.1-mini",
-        messages: [
-          {
-            role: "system",
-            content: "És um analista financeiro de elite."
-          },
-          {
-            role: "user",
-            content: `Organiza estas notícias:
+        response_format: { type: "json_object" },
+        input: `Organiza estas notícias:
 
 ${JSON.stringify(sample)}
 
 Formato:
 {
- "hero": { "headline": "", "summary": "", "tags": [] },
+ "hero": {
+   "headline": "",
+   "summary": "",
+   "tags": ["financial","geo","markets","politics","tech"]
+ },
  "cards": [
-   { "headline": "", "summary": "", "source": "", "url": "", "tag": "" }
+   {
+     "headline": "",
+     "summary": "",
+     "source": "",
+     "url": "",
+     "tag": ""
+   }
  ]
-}
-
-Ordena por impacto global.`
-          }
-        ],
-        temperature: 0.7
+}`
       })
     });
 
     const data = await aiResponse.json();
-    const text = data.choices?.[0]?.message?.content || "";
+
+    const text = data.output?.[0]?.content?.[0]?.text || "{}";
 
     res.setHeader("Cache-Control", "s-maxage=300");
     res.status(200).json({ raw: text });
